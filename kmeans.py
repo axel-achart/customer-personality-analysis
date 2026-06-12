@@ -1,6 +1,6 @@
 """Implementation from scratch de K-means avec NumPy uniquement.
 
-Objectif pedagogique : chaque etape de l'algorithme est explicite.
+Objectif pédagogique : chaque étape de l'algorithme est explicite.
 """
 
 from __future__ import annotations
@@ -9,20 +9,20 @@ import numpy as np
 
 
 class KMeans:
-	"""Classe K-means simple et bien commentee.
+	"""Classe K-means simple et bien commentée.
 
-	Parametres
+	Paramètres
 	----------
 	n_clusters : int, default=3
-		Nombre de clusters (K) a construire.
+		Nombre de clusters (K) à construire.
 	max_iter : int, default=300
-		Nombre maximal d'iterations d'optimisation.
+		Nombre maximal d'itérations d'optimisation.
 	tol : float, default=1e-4
-		Seuil de convergence sur le deplacement des centroides.
+		Seuil de convergence sur le déplacement des centroïdes.
 	random_state : int | None, default=None
-		Graine aleatoire pour la reproductibilite.
+		Graine aléatoire pour la reproductibilité.
 	init : str, default="k-means++"
-		Strategie d'initialisation : "random" ou "k-means++".
+		Stratégie d'initialisation : "random" ou "k-means++".
 	"""
 
 	def __init__(
@@ -34,13 +34,13 @@ class KMeans:
 		init: str = "k-means++",
 	) -> None:
 		if n_clusters <= 0:
-			raise ValueError("n_clusters doit etre strictement positif.")
+			raise ValueError("n_clusters doit être strictement positif.")
 		if max_iter <= 0:
-			raise ValueError("max_iter doit etre strictement positif.")
+			raise ValueError("max_iter doit être strictement positif.")
 		if tol < 0:
-			raise ValueError("tol doit etre >= 0.")
+			raise ValueError("tol doit être >= 0.")
 		if init not in {"random", "k-means++"}:
-			raise ValueError("init doit etre 'random' ou 'k-means++'.")
+			raise ValueError("init doit être 'random' ou 'k-means++'.")
 
 		self.n_clusters = n_clusters
 		self.max_iter = max_iter
@@ -48,31 +48,31 @@ class KMeans:
 		self.random_state = random_state
 		self.init = init
 
-		# Attributs renseignes apres fit.
+		# Attributs renseignés après fit.
 		self.cluster_centers_: np.ndarray | None = None
 		self.labels_: np.ndarray | None = None
 		self.inertia_: float | None = None
 		self.n_iter_: int = 0
 
 	def fit(self, x: np.ndarray) -> "KMeans":
-		"""Entraine K-means sur x.
+		"""Entraîne K-means sur x.
 
 		x a la forme (n_samples, n_features).
 		"""
 		x = self._validate_input(x)
 		rng = np.random.default_rng(self.random_state)
 
-		# Etape 1 : initialiser K centroides.
+		# Étape 1 : initialiser K centroïdes.
 		centroids = self._initialize_centroids(x, rng)
 
 		for iteration in range(1, self.max_iter + 1):
-			# Etape 2 : assigner chaque point au centroide le plus proche.
+			# Étape 2 : assigner chaque point au centroïde le plus proche.
 			labels = self._assign_labels(x, centroids)
 
-			# Etape 3 : recalculer les centroides a partir des affectations.
+			# Étape 3 : recalculer les centroïdes à partir des affectations.
 			new_centroids = self._compute_centroids(x, labels, centroids, rng)
 
-			# Test de convergence : si les centroides bougent peu, on arrete.
+			# Test de convergence : si les centroïdes bougent peu, on arrête.
 			max_shift = np.linalg.norm(new_centroids - centroids, axis=1).max()
 			centroids = new_centroids
 
@@ -83,7 +83,7 @@ class KMeans:
 			# Si la boucle n'a pas break, on a atteint max_iter.
 			self.n_iter_ = self.max_iter
 
-		# Affectation finale avec les centroides converges.
+		# Affectation finale avec les centroïdes convergés.
 		labels = self._assign_labels(x, centroids)
 
 		self.cluster_centers_ = centroids
@@ -92,7 +92,7 @@ class KMeans:
 		return self
 
 	def predict(self, x: np.ndarray) -> np.ndarray:
-		"""Assigne un cluster a de nouveaux points."""
+		"""Assigne un cluster à de nouveaux points."""
 		self._check_is_fitted()
 		x = self._validate_input(x)
 		return self._assign_labels(x, self.cluster_centers_)
@@ -112,7 +112,7 @@ class KMeans:
 		return self._init_kmeans_plus_plus(x, rng)
 
 	def _init_random(self, x: np.ndarray, rng: np.random.Generator) -> np.ndarray:
-		"""Choisit K points uniques aleatoires comme centroides initiaux."""
+		"""Choisit K points uniques aléatoires comme centroïdes initiaux."""
 		indices = rng.choice(x.shape[0], size=self.n_clusters, replace=False)
 		return x[indices].copy()
 
@@ -121,16 +121,16 @@ class KMeans:
 		x: np.ndarray,
 		rng: np.random.Generator,
 	) -> np.ndarray:
-		"""Initialise les centroides avec k-means++ pour plus de stabilite."""
+		"""Initialise les centroïdes avec k-means++ pour plus de stabilité."""
 		n_samples = x.shape[0]
 		centroids = np.empty((self.n_clusters, x.shape[1]), dtype=float)
 
-		# Le premier centroide est choisi aleatoirement.
+		# Le premier centroïde est choisi aléatoirement.
 		first_idx = rng.integers(0, n_samples)
 		centroids[0] = x[first_idx]
 
-		# Les centroides suivants sont choisis avec une probabilite
-		# proportionnelle a la distance au carre au centroide le plus proche.
+		# Les centroïdes suivants sont choisis avec une probabilité
+		# proportionnelle à la distance au carré au centroïde le plus proche.
 		for i in range(1, self.n_clusters):
 			distances_sq = np.min(
 				np.sum((x[:, None, :] - centroids[None, :i, :]) ** 2, axis=2),
@@ -150,7 +150,7 @@ class KMeans:
 
 	@staticmethod
 	def _assign_labels(x: np.ndarray, centroids: np.ndarray) -> np.ndarray:
-		"""Retourne l'indice du centroide le plus proche pour chaque point."""
+		"""Retourne l'indice du centroïde le plus proche pour chaque point."""
 		distances = np.linalg.norm(x[:, None, :] - centroids[None, :, :], axis=2)
 		return np.argmin(distances, axis=1)
 
@@ -161,7 +161,7 @@ class KMeans:
 		previous_centroids: np.ndarray,
 		rng: np.random.Generator,
 	) -> np.ndarray:
-		"""Calcule les moyennes des clusters et gere les clusters vides."""
+		"""Calcule les moyennes des clusters et gère les clusters vides."""
 		n_features = x.shape[1]
 		centroids = np.empty((self.n_clusters, n_features), dtype=float)
 
@@ -169,8 +169,8 @@ class KMeans:
 			cluster_points = x[labels == cluster_idx]
 
 			if cluster_points.size == 0:
-				# Cas cluster vide : on re-seme le centroide avec le point
-				# le plus eloigne de son centroide actuel.
+				# Cas cluster vide : on ré-ensemence le centroïde avec le point
+				# le plus éloigné de son centroïde actuel.
 				farthest_idx = self._index_of_farthest_point(
 					x,
 					labels,
@@ -178,7 +178,7 @@ class KMeans:
 				)
 				centroids[cluster_idx] = x[farthest_idx]
 
-				# Un petit bruit aleatoire evite les centroides dupliques.
+				# Un petit bruit aléatoire évite les centroïdes dupliqués.
 				centroids[cluster_idx] += rng.normal(0.0, 1e-6, size=n_features)
 			else:
 				centroids[cluster_idx] = cluster_points.mean(axis=0)
@@ -191,7 +191,7 @@ class KMeans:
 		labels: np.ndarray,
 		centroids: np.ndarray,
 	) -> int:
-		"""Trouve le point le plus eloigne de son centroide assigne."""
+		"""Trouve le point le plus éloigné de son centroïde assigné."""
 		assigned_centroids = centroids[labels]
 		distances = np.linalg.norm(x - assigned_centroids, axis=1)
 		return int(np.argmax(distances))
@@ -202,21 +202,21 @@ class KMeans:
 		labels: np.ndarray,
 		centroids: np.ndarray,
 	) -> float:
-		"""Inertie = somme des distances au carre au centroide le plus proche."""
+		"""Inertie = somme des distances au carré au centroïde le plus proche."""
 		squared_distances = np.sum((x - centroids[labels]) ** 2, axis=1)
 		return float(np.sum(squared_distances))
 
 	def _check_is_fitted(self) -> None:
 		if self.cluster_centers_ is None:
-			raise RuntimeError("Ce modele KMeans n'est pas entraine. Lance fit() d'abord.")
+			raise RuntimeError("Ce modèle KMeans n'est pas entraîné. Lance fit() d'abord.")
 
 	def _validate_input(self, x: np.ndarray) -> np.ndarray:
 		x = np.asarray(x, dtype=float)
 
 		if x.ndim != 2:
-			raise ValueError("x doit etre un tableau 2D de forme (n_samples, n_features).")
+			raise ValueError("x doit être un tableau 2D de forme (n_samples, n_features).")
 		if x.shape[0] < self.n_clusters:
-			raise ValueError("n_samples doit etre >= n_clusters.")
+			raise ValueError("n_samples doit être >= n_clusters.")
 		if x.shape[1] == 0:
 			raise ValueError("x doit contenir au moins une feature.")
 
@@ -224,7 +224,7 @@ class KMeans:
 
 
 def _build_demo_data(seed: int = 7) -> np.ndarray:
-	"""Construit un petit jeu de donnees synthetique sans dependance ML externe."""
+	"""Construit un petit jeu de données synthétiques sans dépendance ML externe."""
 	rng = np.random.default_rng(seed)
 
 	cluster_a = rng.normal(loc=(-4.0, -2.0), scale=0.7, size=(90, 2))
@@ -234,7 +234,7 @@ def _build_demo_data(seed: int = 7) -> np.ndarray:
 
 
 if __name__ == "__main__":
-	# Petit exemple executable pour valider rapidement la classe.
+	# Petit exemple exécutable pour valider rapidement la classe.
 	data = _build_demo_data(seed=7)
 
 	model = KMeans(
@@ -246,7 +246,7 @@ if __name__ == "__main__":
 	)
 	model.fit(data)
 
-	print("Centroides finaux:")
+	print("Centroïdes finaux:")
 	print(np.round(model.cluster_centers_, 3))
 	print(f"Inertie: {model.inertia_:.3f}")
-	print(f"Iterations: {model.n_iter_}")
+	print(f"Itérations: {model.n_iter_}")
