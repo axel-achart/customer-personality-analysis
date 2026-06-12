@@ -114,5 +114,72 @@ https://cdn.aaai.org/KDD/1996/KDD96-037.pdf
 https://doi.org/10.1145/3068335
 
 
-# customer-personality-analysis
-“Statistics show that statistics cannot be trusted.”
+### Quelles sont les méthodes de sélection du nombre optimal de clusters et la mesure de qualité d’un cluster.
+
+
+L'idée centrale est simple : tu as des données, tu veux les regrouper automatiquement, mais tu ne sais pas en combien de groupes. Le clustering c'est ça — et les méthodes dont on parle servent à répondre à cette question.
+
+On commence par le problème du choix de K :
+
+**Méthode du coude** : on essaie K = 1, 2, 3, 4… et on mesure à chaque fois l'inertie (la somme des distances de chaque point à son centroïde). Naturellement l'inertie baisse quand K augmente — mais à partir d'un certain K, le gain devient minuscule. Ce "coude" indique le bon K.
+![alt text](image-1.png)
+
+**la méthode du score de silhouette**: c'est la plus fiable. Pour chaque point, on regarde deux choses : est-il proche des autres points de son groupe ? Et est-il loin du groupe voisin ? Si oui, son score est proche de +1. Si non (il est mal classé), son score est proche de -1.
+
+
+![alt text](image-2.png)
+
+Maintenant qu'on a des clusters, comment savoir s'ils sont bons ?
+
+Il faut verifier 2 choses :
+1. **Compacite** : les points d'un meme cluster sont proches entre eux.
+2. **Separation** : les clusters sont bien eloignes les uns des autres.
+
+### Comment fonctionnent les 3 methodes de mesure de qualite
+
+1. **Silhouette**
+
+Pour chaque point, on compare :
+- sa distance moyenne a son propre cluster
+- sa distance moyenne au cluster voisin le plus proche
+
+Si le point est bien place, il est proche de son cluster et loin des autres.
+
+Interpretation :
+- proche de **1** : tres bon
+- proche de **0** : clusters qui se chevauchent
+- negatif : point souvent mal classe
+
+Regle simple : **plus grand = mieux**.
+
+2. **Davies-Bouldin**
+
+On regarde si les clusters sont :
+- compacts a l'interieur
+- bien separes entre eux
+
+Le score compare la dispersion interne des clusters a la distance entre leurs centres.
+
+Regle simple : **plus petit = mieux**.
+
+3. **Calinski-Harabasz**
+
+Cette methode compare :
+- la separation entre clusters
+- la dispersion a l'interieur des clusters
+
+Si les clusters sont loin les uns des autres et serres a l'interieur, le score augmente.
+
+Regle simple : **plus grand = mieux**.
+
+### Comment choisir K en pratique
+
+1. Tester plusieurs valeurs de K (ex: 2 a 10).
+2. Regarder la **methode du coude** pour trouver une zone plausible.
+3. Verifier avec la **silhouette** (prendre un K avec un score eleve).
+4. Garder un K interpretable metier (segments utiles pour l'analyse).
+
+En resume :
+- **Coude** sert surtout a choisir le nombre de clusters.
+- **Silhouette / Davies-Bouldin / Calinski-Harabasz** servent a juger la qualite du clustering.
+
