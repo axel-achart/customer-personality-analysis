@@ -183,3 +183,26 @@ En resume :
 - **Coude** sert surtout a choisir le nombre de clusters.
 - **Silhouette / Davies-Bouldin / Calinski-Harabasz** servent a juger la qualite du clustering.
 
+### Sources (selection de K et mesure de qualite)
+
+1. Scikit-learn, KMeans (inertie / choix de K):
+https://scikit-learn.org/stable/modules/generated/sklearn.cluster.KMeans.html
+
+2. Scikit-learn, silhouette_score:
+https://scikit-learn.org/stable/modules/generated/sklearn.metrics.silhouette_score.html
+
+3. Scikit-learn, davies_bouldin_score:
+https://scikit-learn.org/stable/modules/generated/sklearn.metrics.davies_bouldin_score.html
+
+4. Scikit-learn, calinski_harabasz_score:
+https://scikit-learn.org/stable/modules/generated/sklearn.metrics.calinski_harabasz_score.html
+
+5. Rousseeuw, P. J. (1987), Silhouettes: a Graphical Aid to the Interpretation and Validation of Cluster Analysis:
+https://www.sciencedirect.com/science/article/pii/0377042787901257
+
+6. Davies, D. L. and Bouldin, D. W. (1979), A Cluster Separation Measure:
+https://ieeexplore.ieee.org/document/4766909
+
+7. Calinski, T. and Harabasz, J. (1974), A Dendrite Method for Cluster Analysis:
+https://www.tandfonline.com/doi/abs/10.1080/03610927408827101
+
