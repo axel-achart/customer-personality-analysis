@@ -60,7 +60,7 @@ flowchart TD
 	E -- Oui --> F[6. Couper le dendrogramme et obtenir les clusters finaux]
 ```
 
-![alt text](image.png)
+![alt text](images/image.png)
 
 #### Sources CAH:
 1. Scikit-learn, Clustering hiérarchique
@@ -122,12 +122,12 @@ L'idée centrale est simple : tu as des données, tu veux les regrouper automati
 On commence par le problème du choix de K :
 
 **Méthode du coude** : on essaie K = 1, 2, 3, 4… et on mesure à chaque fois l'inertie (la somme des distances de chaque point à son centroïde). Naturellement l'inertie baisse quand K augmente — mais à partir d'un certain K, le gain devient minuscule. Ce "coude" indique le bon K.
-![alt text](image-1.png)
+![alt text](images/image-1.png)
 
 **la méthode du score de silhouette**: c'est la plus fiable. Pour chaque point, on regarde deux choses : est-il proche des autres points de son groupe ? Et est-il loin du groupe voisin ? Si oui, son score est proche de +1. Si non (il est mal classé), son score est proche de -1.
 
 
-![alt text](image-2.png)
+![alt text](images/image-2.png)
 
 Maintenant qu'on a des clusters, comment savoir s'ils sont bons ?
 
