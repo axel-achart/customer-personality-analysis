@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(& \"C:\\\\Users\\\\axela\\\\AppData\\\\Local\\\\Programs\\\\Python\\\\Python310\\\\python.exe\" -c \"from sklearn.cluster import KMeans; from sklearn.preprocessing import StandardScaler; from sklearn.datasets import load_iris; print\\('Tous les imports OK'\\)\")",
+      "PowerShell(Get-ChildItem \"$env:APPDATA\\\\jupyter\\\\kernels\" | Select-Object Name)",
+      "PowerShell(Get-Content \"$env:APPDATA\\\\jupyter\\\\kernels\\\\python310-system\\\\kernel.json\")"
+    ]
+  }
+}
