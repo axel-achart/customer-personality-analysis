@@ -3,7 +3,26 @@
     "allow": [
       "PowerShell(& \"C:\\\\Users\\\\axela\\\\AppData\\\\Local\\\\Programs\\\\Python\\\\Python310\\\\python.exe\" -c \"from sklearn.cluster import KMeans; from sklearn.preprocessing import StandardScaler; from sklearn.datasets import load_iris; print\\('Tous les imports OK'\\)\")",
       "PowerShell(Get-ChildItem \"$env:APPDATA\\\\jupyter\\\\kernels\" | Select-Object Name)",
-      "PowerShell(Get-Content \"$env:APPDATA\\\\jupyter\\\\kernels\\\\python310-system\\\\kernel.json\")"
+      "PowerShell(Get-Content \"$env:APPDATA\\\\jupyter\\\\kernels\\\\python310-system\\\\kernel.json\")",
+      "Bash(python -c ' *)",
+      "Bash(jupyter nbconvert *)",
+      "Bash(.venv/Scripts/python.exe -c ' *)",
+      "Bash(.venv/Scripts/python.exe -c \"import sklearn; print\\(sklearn.__version__\\)\")",
+      "Bash(.venv/Scripts/python.exe -c \"import numpy; print\\(numpy.__version__\\)\")",
+      "Bash(pip show *)",
+      "Bash(.venv/Scripts/python.exe -m pip install --force-reinstall --no-deps scikit-learn)",
+      "Bash(.venv/Scripts/python.exe -c \"import sklearn; from sklearn.cluster import KMeans; print\\('OK', sklearn.__version__\\)\")",
+      "Bash(.venv/Scripts/python.exe -c \"import sklearn; print\\(sklearn.__file__\\)\")",
+      "Bash(.venv/Scripts/python.exe -m pip show scikit-learn)",
+      "Bash(.venv/Scripts/python.exe -m pip uninstall -y scikit-learn)",
+      "Bash(.venv/Scripts/python.exe -m pip install \"scikit-learn==1.7.2\" --no-cache-dir)",
+      "Bash(.venv/Scripts/python.exe -m pip install \"scikit-learn==1.7.2\" --no-cache-dir --force-reinstall)",
+      "Bash(.venv/Scripts/python.exe -m pip install --force-reinstall --no-deps --no-cache-dir \"scikit-learn==1.7.2\")",
+      "Bash(.venv/Scripts/python.exe -m pip install --no-cache-dir \"scikit-learn==1.7.2\")",
+      "Bash(.venv/Scripts/python.exe /tmp/pipeline_full.py)",
+      "Bash(mkdir -p \"/c/Users/axela/AppData/Local/Temp/claude/c--Users-axela-OneDrive-Bureau---PC-Portable-LaPlateforme-Projets-Ecole-AI-B2-Projet-10---Customer-Personality-Analysis-customer-personality-analysis/1824d344-0a2f-4ad0-8640-84df7ba42cb1/scratchpad\")",
+      "Bash(cp /tmp/pipeline_final.py \"/c/Users/axela/AppData/Local/Temp/claude/c--Users-axela-OneDrive-Bureau---PC-Portable-LaPlateforme-Projets-Ecole-AI-B2-Projet-10---Customer-Personality-Analysis-customer-personality-analysis/1824d344-0a2f-4ad0-8640-84df7ba42cb1/scratchpad/pipeline_final.py\")",
+      "Bash(.venv/Scripts/python.exe -m jupyter nbconvert --to notebook --execute --inplace \"notebook.ipynb\" --ExecutePreprocessor.timeout=300)"
     ]
   }
 }
