@@ -3,6 +3,22 @@
 
 ---
 
+## Contexte du projet
+
+Ce projet a pour but de segmenter la clientèle d'une épicerie de quartier par apprentissage non supervisé, afin de mieux comprendre qui sont ses clients et d'adapter ses actions marketing à chaque groupe plutôt que de communiquer de la même façon auprès de tout le monde.
+
+Avant de travailler sur les données réelles de l'épicerie, le dataset **Iris** est utilisé comme cas d'école : ses 3 classes sont connues à l'avance, ce qui permet de valider notre propre implémentation de K-Means (`kmeans.py`) en la comparant à un clustering dont on connaît la "bonne réponse".
+
+---
+
+## Données
+
+**Iris** (`sklearn.datasets.load_iris`) : 150 fleurs, 4 mesures (longueur/largeur des sépales et pétales) réparties en 3 espèces. Dataset propre, sans valeur manquante, utilisé uniquement pour valider les algorithmes.
+
+**Épicerie** (`data/raw/marketing_campaign.csv`) : 2240 clients, 29 colonnes brutes (année de naissance, revenu, statut marital, nombre d'enfants, dépenses par catégorie de produit, nombre d'achats par canal, réponses aux campagnes marketing, etc.). Après nettoyage (valeurs manquantes sur le revenu, catégories aberrantes, quelques outliers d'âge/revenu), il reste 2208 clients. Plusieurs variables ont ensuite été recalculées par feature engineering (âge, ancienneté, dépenses totales, nombre d'achats total, nombre d'enfants, campagnes acceptées) pour remplacer des colonnes détaillées très corrélées entre elles. Le détail de l'exploration, du nettoyage et du feature engineering se trouve dans `notebook.ipynb`.
+
+---
+
 ## Veille technique
 
 ### Regroupement non supervisé
@@ -120,5 +136,27 @@ Source : HAL
 
 Mesure le rapport entre la variance inter-clusters et la variance intra-cluster. Un score plus élevé signifie des clusters compacts et bien séparés. Cet indice aide à déterminer le nombre idéal de clusters.
 Source : GeeksforGeeks
+
+---
+
+## Algorithmes utilisés
+
+- **K-Means** : implémenté à la main dans `kmeans.py` (algorithme de Lloyd, initialisation k-means++, plusieurs essais gardés selon l'inertie), puis comparé à `sklearn.cluster.KMeans` sur Iris pour vérifier que les deux tombent sur le même résultat. Utilisé ensuite comme algorithme principal sur les données de l'épicerie (via scikit-learn).
+- **Clustering hiérarchique ascendant (Agglomerative Clustering, linkage="ward")** : appliqué sur l'épicerie, avec un dendrogramme pour visualiser les regroupements successifs.
+- **Gaussian Mixture Model (GMM)** : appliqué sur l'épicerie, pour comparer une approche probabiliste (mélange de gaussiennes) aux deux méthodes précédentes basées sur la distance.
+
+Le nombre de clusters (k=3 pour Iris, k=4 pour l'épicerie) a été choisi via la méthode du coude et le score de silhouette. Les 3 algorithmes ont ensuite été comparés entre eux sur ce même k avec le score de silhouette, avant de profiler les clusters obtenus.
+
+Sur l'épicerie, une réduction de dimension a été faite en amont : sélection de features pour retirer les variables détaillées redondantes (remplacées par les agrégats du feature engineering), puis PCA à 3 composantes (~47% de variance conservée) pour travailler sur un espace plus compact et plus facile à visualiser.
+
+---
+
+## Conclusion
+
+Sur Iris, notre implémentation de K-Means donne exactement les mêmes résultats que celle de scikit-learn, ce qui valide l'algorithme. Le clustering retrouve bien la structure des 3 espèces, à l'exception de *versicolor* et *virginica* qui se chevauchent légèrement dans l'espace des variables.
+
+Sur l'épicerie, la tâche est plus difficile : il n'y a pas de vraie étiquette à retrouver, et les scores de silhouette obtenus (~0.2-0.3) sont nettement plus modestes que sur Iris. K-Means est l'algorithme qui a le mieux performé parmi les 3 testés, devant le clustering hiérarchique et le GMM. Le profiling des 4 clusters fait ressortir des segments clients assez naturels : des clients premium à forte valeur, des clients fidèles à fréquence d'achat élevée, des familles à budget modéré, et des jeunes clients digital-first à faible pouvoir d'achat mais fort potentiel.
+
+Le détail complet (visualisations, chiffres, interprétations) est dans `notebook.ipynb`. Pour la suite, plusieurs pistes restent à creuser : tester une MFA plutôt qu'une PCA classique pour mieux gérer le mélange de variables quantitatives et catégorielles, essayer DBSCAN pour isoler les clients atypiques, ou pondérer certaines variables (revenu, dépenses) selon leur importance métier avant de relancer le clustering.
 
 ---

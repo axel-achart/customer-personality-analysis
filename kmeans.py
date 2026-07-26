@@ -139,3 +139,23 @@ class KMeans:
     def fit_predict(self, X):
         self.fit(X)
         return self.labels_
+
+
+if __name__ == "__main__":
+    # petit test rapide pour vérifier que l'implémentation tient la route,
+    # en comparant avec la version scikit-learn sur le dataset Iris
+    from sklearn.datasets import load_iris
+    from sklearn.preprocessing import StandardScaler
+    from sklearn.cluster import KMeans as SklearnKMeans
+
+    X_scaled = StandardScaler().fit_transform(load_iris().data)
+    k = 3
+
+    model = KMeans(n_clusters=k, random_state=42, n_init=10)
+    labels = model.fit_predict(X_scaled)
+    print(f"Notre KMeans   : inertie = {model.inertia_:.2f} (convergence en {model.n_iter_} itérations)")
+    print(f"Distribution des clusters : {np.bincount(labels)}")
+
+    sk_model = SklearnKMeans(n_clusters=k, random_state=42, n_init=10)
+    sk_model.fit(X_scaled)
+    print(f"KMeans sklearn : inertie = {sk_model.inertia_:.2f}")

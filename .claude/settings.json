@@ -22,7 +22,15 @@
       "Bash(.venv/Scripts/python.exe /tmp/pipeline_full.py)",
       "Bash(mkdir -p \"/c/Users/axela/AppData/Local/Temp/claude/c--Users-axela-OneDrive-Bureau---PC-Portable-LaPlateforme-Projets-Ecole-AI-B2-Projet-10---Customer-Personality-Analysis-customer-personality-analysis/1824d344-0a2f-4ad0-8640-84df7ba42cb1/scratchpad\")",
       "Bash(cp /tmp/pipeline_final.py \"/c/Users/axela/AppData/Local/Temp/claude/c--Users-axela-OneDrive-Bureau---PC-Portable-LaPlateforme-Projets-Ecole-AI-B2-Projet-10---Customer-Personality-Analysis-customer-personality-analysis/1824d344-0a2f-4ad0-8640-84df7ba42cb1/scratchpad/pipeline_final.py\")",
-      "Bash(.venv/Scripts/python.exe -m jupyter nbconvert --to notebook --execute --inplace \"notebook.ipynb\" --ExecutePreprocessor.timeout=300)"
+      "Bash(.venv/Scripts/python.exe -m jupyter nbconvert --to notebook --execute --inplace \"notebook.ipynb\" --ExecutePreprocessor.timeout=300)",
+      "Bash(python kmeans.py)",
+      "Bash(echo \"EXIT CODE: $?\")",
+      "Bash(PYTHONIOENCODING=utf-8 python -c ' *)",
+      "Bash(mkdir -p .claude/tmp)",
+      "Bash(python -c \"import jupyter\")",
+      "Bash(python -m jupyter --version)",
+      "Bash(python -m jupyter kernelspec list)",
+      "Bash(python -m jupyter nbconvert --to notebook --execute --inplace notebook.ipynb --ExecutePreprocessor.timeout=600)"
     ]
   }
 }
