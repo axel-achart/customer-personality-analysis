@@ -99,7 +99,7 @@ flowchart TD
 	H --> G
 	G -- Non --> I[8. Clusters finaux + points bruit]
 ```
-
+hdb scan
 #### Sources DBSCAN:
 1. Scikit-learn, DBSCAN (section Clustering)
 https://scikit-learn.org/stable/modules/clustering.html#dbscan
@@ -206,3 +206,4 @@ https://ieeexplore.ieee.org/document/4766909
 7. Calinski, T. and Harabasz, J. (1974), A Dendrite Method for Cluster Analysis:
 https://www.tandfonline.com/doi/abs/10.1080/03610927408827101
 
+yellow rix
