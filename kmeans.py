@@ -5,6 +5,8 @@ Objectif pédagogique : chaque étape de l'algorithme est explicite.
 
 from __future__ import annotations
 
+from collections.abc import Callable
+
 import numpy as np
 
 
@@ -233,6 +235,379 @@ def _build_demo_data(seed: int = 7) -> np.ndarray:
 	return np.vstack([cluster_a, cluster_b, cluster_c])
 
 
+# ---------------------------------------------------------------------------
+# Métriques internes de qualité d'un clustering (from scratch, NumPy only)
+# ---------------------------------------------------------------------------
+
+
+def silhouette_score(x: np.ndarray, labels: np.ndarray) -> float:
+	"""Score de silhouette moyen pour un clustering donné.
+
+	Pour chaque point i on calcule :
+	    s(i) = (b(i) - a(i)) / max(a(i), b(i))
+	où :
+	    a(i) = distance moyenne de i aux autres points de **son** cluster
+	    b(i) = distance moyenne minimale de i aux points d'un **autre** cluster
+
+	Parameters
+	----------
+	x : np.ndarray de forme (n_samples, n_features)
+		Les données.
+	labels : np.ndarray de forme (n_samples,)
+		Les étiquettes de cluster pour chaque point.
+
+	Returns
+	-------
+	float
+		Score de silhouette moyen (entre -1 et 1). Plus c'est proche de 1,
+		meilleur est le clustering.
+	"""
+	x = np.asarray(x, dtype=float)
+	labels = np.asarray(labels, dtype=int)
+	unique_labels = np.unique(labels)
+	n_clusters = len(unique_labels)
+
+	if n_clusters <= 1:
+		# Un seul cluster : le score n'a pas de sens, on retourne -1.
+		return -1.0
+
+	n_samples = x.shape[0]
+
+	# Matrice de distances pré-calculée pour éviter des calculs redondants.
+	# On ne garde que le triangle supérieur pour la mémoire, mais ici on
+	# privilégie la lisibilité.
+	distances = np.linalg.norm(x[:, None, :] - x[None, :, :], axis=2)  # (n, n)
+
+	silhouette_vals = np.empty(n_samples, dtype=float)
+
+	for i in range(n_samples):
+		cluster_i = labels[i]
+
+		# Masques
+		same_cluster_mask = labels == cluster_i
+		same_cluster_mask[i] = False  # exclut le point lui-même
+
+		# a(i) : distance moyenne intra-cluster
+		if np.any(same_cluster_mask):
+			a_i = distances[i, same_cluster_mask].mean()
+		else:
+			a_i = 0.0
+
+		# b(i) : plus petite distance moyenne inter-cluster
+		b_i = float("inf")
+		for other_label in unique_labels:
+			if other_label == cluster_i:
+				continue
+			other_mask = labels == other_label
+			mean_dist = distances[i, other_mask].mean()
+			if mean_dist < b_i:
+				b_i = mean_dist
+
+		if b_i == float("inf"):
+			b_i = 0.0
+
+		denom = max(a_i, b_i)
+		silhouette_vals[i] = (b_i - a_i) / denom if denom > 0 else 0.0
+
+	return float(silhouette_vals.mean())
+
+
+def davies_bouldin_score(x: np.ndarray, labels: np.ndarray) -> float:
+	"""Indice de Davies-Bouldin pour un clustering donné.
+
+	Pour chaque cluster k on définit :
+	    R_k = max_{j ≠ k} ( (s_k + s_j) / d(c_k, c_j) )
+	où s_k est la dispersion moyenne intra-cluster et d(c_k, c_j) la distance
+	entre les centroïdes des clusters k et j.
+
+	Le score final est la moyenne des R_k sur tous les clusters.
+	**Plus le score est petit, meilleur est le clustering.**
+
+	Parameters
+	----------
+	x : np.ndarray de forme (n_samples, n_features)
+		Les données.
+	labels : np.ndarray de forme (n_samples,)
+		Les étiquettes de cluster pour chaque point.
+
+	Returns
+	-------
+	float
+		Indice de Davies-Bouldin.
+	"""
+	x = np.asarray(x, dtype=float)
+	labels = np.asarray(labels, dtype=int)
+	unique_labels = np.unique(labels)
+	n_clusters = len(unique_labels)
+
+	if n_clusters <= 1:
+		return float("inf")
+
+	# Calcul des centroïdes et des dispersions intra-cluster
+	centroids = np.empty((n_clusters, x.shape[1]), dtype=float)
+	intra_dispersion = np.empty(n_clusters, dtype=float)
+
+	for idx, label in enumerate(unique_labels):
+		cluster_points = x[labels == label]
+		centroids[idx] = cluster_points.mean(axis=0)
+		# Dispersion = distance moyenne des points au centroïde
+		if len(cluster_points) > 0:
+			intra_dispersion[idx] = np.linalg.norm(
+				cluster_points - centroids[idx], axis=1
+			).mean()
+		else:
+			intra_dispersion[idx] = 0.0
+
+	r_values = np.empty(n_clusters, dtype=float)
+
+	for k in range(n_clusters):
+		max_ratio = 0.0
+		for j in range(n_clusters):
+			if j == k:
+				continue
+			# Distance entre centroïdes k et j
+			centroid_dist = np.linalg.norm(centroids[k] - centroids[j])
+			if centroid_dist == 0:
+				ratio = float("inf")
+			else:
+				ratio = (intra_dispersion[k] + intra_dispersion[j]) / centroid_dist
+			if ratio > max_ratio:
+				max_ratio = ratio
+		r_values[k] = max_ratio
+
+	return float(r_values.mean())
+
+
+def calinski_harabasz_score(x: np.ndarray, labels: np.ndarray) -> float:
+	"""Indice de Calinski-Harabasz (Variance Ratio Criterion) pour un clustering.
+
+	CH = ( trace(B_k) / trace(W_k) ) * ( (n - k) / (k - 1) )
+
+	où :
+	    B_k = matrice de dispersion inter-cluster
+	    W_k = matrice de dispersion intra-cluster
+	    n   = nombre total d'échantillons
+	    k   = nombre de clusters
+
+	**Plus le score est grand, meilleur est le clustering.**
+
+	Parameters
+	----------
+	x : np.ndarray de forme (n_samples, n_features)
+		Les données.
+	labels : np.ndarray de forme (n_samples,)
+		Les étiquettes de cluster pour chaque point.
+
+	Returns
+	-------
+	float
+		Indice de Calinski-Harabasz.
+	"""
+	x = np.asarray(x, dtype=float)
+	labels = np.asarray(labels, dtype=int)
+	unique_labels = np.unique(labels)
+	n_clusters = len(unique_labels)
+	n_samples = x.shape[0]
+
+	if n_clusters <= 1 or n_clusters >= n_samples:
+		return 0.0
+
+	# Centre global des données
+	global_center = x.mean(axis=0)
+
+	# trace(W_k) : dispersion intra-cluster
+	trace_wk = 0.0
+	# trace(B_k) : dispersion inter-cluster
+	trace_bk = 0.0
+
+	for label in unique_labels:
+		cluster_points = x[labels == label]
+		n_k = cluster_points.shape[0]
+		if n_k == 0:
+			continue
+
+		cluster_center = cluster_points.mean(axis=0)
+
+		# Contribution intra-cluster : somme des distances au carré au centroïde
+		trace_wk += np.sum((cluster_points - cluster_center) ** 2)
+
+		# Contribution inter-cluster : n_k * distance² entre centroïde et centre global
+		trace_bk += n_k * np.sum((cluster_center - global_center) ** 2)
+
+	if trace_wk == 0:
+		return float("inf")
+
+	ch = (trace_bk / trace_wk) * ((n_samples - n_clusters) / (n_clusters - 1))
+	return float(ch)
+
+
+def _find_elbow_point(inertias: list[float]) -> int:
+	"""Détecte le point de coude sur une courbe d'inertie.
+
+	Utilise la méthode du « triangle » : pour chaque point on calcule la
+	distance à la ligne reliant le premier et le dernier point de la courbe.
+	Le K qui maximise cette distance est le coude.
+
+	Parameters
+	----------
+	inertias : list[float]
+		Inerties pour K = 1, 2, ..., n (dans l'ordre croissant).
+
+	Returns
+	-------
+	int
+		L'indice (0-based) du coude dans la liste fournie.
+		Correspond au K = indice + 1 qui est le coude détecté.
+	"""
+	n = len(inertias)
+	if n <= 2:
+		return 0
+
+	inertias_arr = np.array(inertias, dtype=float)
+	x_vals = np.arange(1, n + 1, dtype=float)
+
+	# Ligne entre le premier point (x=1, y=inertias[0]) et le dernier (x=n, y=inertias[-1])
+	# Distance d'un point (x_i, y_i) à cette ligne :
+	#   | (x2 - x1)*(y1 - y_i) - (x1 - x_i)*(y2 - y1) | / sqrt((x2 - x1)² + (y2 - y1)²)
+	x1, y1 = x_vals[0], inertias_arr[0]
+	x2, y2 = x_vals[-1], inertias_arr[-1]
+
+	denom = np.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)
+	if denom == 0:
+		return 0
+
+	numerators = np.abs((x2 - x1) * (y1 - inertias_arr) - (x1 - x_vals) * (y2 - y1))
+	distances = numerators / denom
+
+	# Le coude est le point le plus éloigné de la ligne
+	return int(np.argmax(distances))
+
+
+def find_optimal_k(
+	x: np.ndarray,
+	max_k: int = 10,
+	random_state: int | None = None,
+	init: str = "k-means++",
+	max_iter: int = 300,
+	tol: float = 1e-4,
+	scoring: Callable[[np.ndarray, np.ndarray], float] | None = None,
+) -> dict:
+	"""Cherche le nombre optimal de clusters K en testant K = 2 → max_k.
+
+	Pour chaque K, un modèle KMeans est entraîné puis les métriques de qualité
+	sont calculées :
+	    - inertie (somme des distances au carré au centroïde)
+	    - score de silhouette (de -1 à 1, plus grand = meilleur)
+	    - indice de Davies-Bouldin (plus petit = meilleur)
+	    - indice de Calinski-Harabasz (plus grand = meilleur)
+
+	Le « meilleur » K est retourné selon chaque critère.  La méthode du coude
+	est appliquée sur la courbe d'inertie.
+
+	Parameters
+	----------
+	x : np.ndarray de forme (n_samples, n_features)
+		Les données à clusteriser.
+	max_k : int, default=10
+		Nombre maximal de clusters à tester (K maximum).
+	random_state : int | None, default=None
+		Graine aléatoire pour la reproductibilité.
+	init : str, default="k-means++"
+		Stratégie d'initialisation ("random" ou "k-means++").
+	max_iter : int, default=300
+		Nombre maximal d'itérations par entraînement.
+	tol : float, default=1e-4
+		Seuil de convergence par entraînement.
+	scoring : callable | None, default=None
+		Fonction de scoring personnalisée (x, labels) -> float.  Si fournie,
+		elle est également évaluée pour chaque K.
+
+	Returns
+	-------
+	dict
+		Dictionnaire contenant :
+		- "ks" : liste des K testés
+		- "inertias", "silhouette_scores", "davies_bouldin_scores",
+		  "calinski_harabasz_scores" : listes des métriques pour chaque K
+		- "best_k_elbow", "best_k_silhouette", "best_k_davies_bouldin",
+		  "best_k_calinski_harabasz" : K optimal selon chaque critère
+		- "custom_scores" (si scoring est fourni)
+		- "best_k_custom" (si scoring est fourni)
+	"""
+	x = np.asarray(x, dtype=float)
+	n_samples = x.shape[0]
+	max_k = min(max_k, n_samples - 1, n_samples)
+	if max_k < 2:
+		raise ValueError("max_k doit être >= 2 et < n_samples.")
+
+	ks = list(range(2, max_k + 1))
+
+	inertias: list[float] = []
+	silhouette_scores: list[float] = []
+	davies_bouldin_scores: list[float] = []
+	calinski_harabasz_scores: list[float] = []
+	custom_scores: list[float] | None = [] if scoring is not None else None
+
+	for k in ks:
+		model = KMeans(
+			n_clusters=k,
+			max_iter=max_iter,
+			tol=tol,
+			random_state=random_state,
+			init=init,
+		)
+		model.fit(x)
+
+		inertias.append(model.inertia_)
+		silhouette_scores.append(silhouette_score(x, model.labels_))
+		davies_bouldin_scores.append(davies_bouldin_score(x, model.labels_))
+		calinski_harabasz_scores.append(calinski_harabasz_score(x, model.labels_))
+
+		if scoring is not None:
+			custom_scores.append(scoring(x, model.labels_))
+
+	# Détermination du « meilleur K » selon chaque critère
+	# Pour l'inertie : on inclut K=1 pour que le coude ait du sens.
+	# On recalcule l'inertie pour K=1 avec un seul centroïde global.
+	global_center = x.mean(axis=0)
+	inertia_k1 = float(np.sum((x - global_center) ** 2))
+	all_inertias = [inertia_k1] + inertias
+	elbow_idx = _find_elbow_point(all_inertias)
+	# elbow_idx = 0 correspond à K=1, 1 → K=2, etc.
+	best_k_elbow = elbow_idx + 1
+	# Si le coude tombe sur K=1, on prend K=2 car K=1 n'est pas un clustering utile
+	if best_k_elbow < 2:
+		best_k_elbow = 2
+
+	silhouette_arr = np.array(silhouette_scores)
+	best_k_silhouette = ks[int(np.argmax(silhouette_arr))]
+
+	db_arr = np.array(davies_bouldin_scores)
+	best_k_davies_bouldin = ks[int(np.argmin(db_arr))]
+
+	ch_arr = np.array(calinski_harabasz_scores)
+	best_k_calinski_harabasz = ks[int(np.argmax(ch_arr))]
+
+	result: dict = {
+		"ks": ks,
+		"inertias": inertias,
+		"silhouette_scores": silhouette_scores,
+		"davies_bouldin_scores": davies_bouldin_scores,
+		"calinski_harabasz_scores": calinski_harabasz_scores,
+		"best_k_elbow": best_k_elbow,
+		"best_k_silhouette": best_k_silhouette,
+		"best_k_davies_bouldin": best_k_davies_bouldin,
+		"best_k_calinski_harabasz": best_k_calinski_harabasz,
+	}
+
+	if custom_scores is not None:
+		result["custom_scores"] = custom_scores
+		custom_arr = np.array(custom_scores)
+		result["best_k_custom"] = ks[int(np.argmax(custom_arr))]
+
+	return result
+
+
 if __name__ == "__main__":
 	# Petit exemple exécutable pour valider rapidement la classe.
 	data = _build_demo_data(seed=7)
@@ -250,3 +625,26 @@ if __name__ == "__main__":
 	print(np.round(model.cluster_centers_, 3))
 	print(f"Inertie: {model.inertia_:.3f}")
 	print(f"Itérations: {model.n_iter_}")
+
+	# Démonstration de la sélection automatique du K optimal
+	print("\n" + "=" * 60)
+	print("Recherche du K optimal (2 → 8) ...")
+	print("=" * 60)
+	results = find_optimal_k(data, max_k=8, random_state=7)
+
+	for k, inert, sil, db, ch in zip(
+		results["ks"],
+		results["inertias"],
+		results["silhouette_scores"],
+		results["davies_bouldin_scores"],
+		results["calinski_harabasz_scores"],
+	):
+		print(
+			f"K={k:>2d}  Inertie={inert:>10.2f}  Silhouette={sil:>7.4f}  "
+			f"Davies-Bouldin={db:>7.4f}  Calinski-Harabasz={ch:>10.2f}"
+		)
+
+	print(f"\nK optimal (coude)            : {results['best_k_elbow']}")
+	print(f"K optimal (silhouette)       : {results['best_k_silhouette']}")
+	print(f"K optimal (Davies-Bouldin)   : {results['best_k_davies_bouldin']}")
+	print(f"K optimal (Calinski-Harabasz): {results['best_k_calinski_harabasz']}")
