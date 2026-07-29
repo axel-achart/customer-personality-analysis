@@ -441,6 +441,88 @@ def calinski_harabasz_score(x: np.ndarray, labels: np.ndarray) -> float:
 	return float(ch)
 
 
+def gap_statistic(
+	x: np.ndarray,
+	k: int,
+	n_refs: int = 10,
+	random_state: int | None = None,
+	init: str = "k-means++",
+	max_iter: int = 300,
+	tol: float = 1e-4,
+) -> float:
+	"""Calcule la statistique d'écart (Gap Statistic) pour un K donné.
+
+	Principe (Tibshirani, Walther & Hastie, 2001) :
+	1. On calcule l'inertie W_k observée sur les vraies données pour K clusters.
+	2. On génère B jeux de données de référence uniformément distribués dans
+	   le même espace que les données originales (bornes = min/max par feature).
+	3. Pour chaque jeu de référence, on calcule l'inertie W*_k après K-means.
+	4. Gap(K) = (1/B) * Σ log(W*_k) - log(W_k)
+
+	Un K est considéré comme bon si Gap(K) est élevé (l'inertie observée est
+	beaucoup plus petite que l'inertie attendue sous une distribution uniforme,
+	ce qui signifie qu'il existe une vraie structure de clusters).
+
+	Parameters
+	----------
+	x : np.ndarray de forme (n_samples, n_features)
+		Les données.
+	k : int
+		Nombre de clusters pour lequel calculer le Gap.
+	n_refs : int, default=10
+		Nombre de jeux de référence (B). Plus c'est grand, plus l'estimation
+		est stable, mais plus c'est long.
+	random_state : int | None, default=None
+		Graine aléatoire pour la reproductibilité.
+	init : str, default="k-means++"
+		Stratégie d'initialisation pour KMeans.
+	max_iter : int, default=300
+		Nombre maximal d'itérations.
+	tol : float, default=1e-4
+		Seuil de convergence.
+
+	Returns
+	-------
+	float
+		La valeur du Gap(K). Plus elle est grande, plus K est pertinent.
+	"""
+	x = np.asarray(x, dtype=float)
+	n_samples, n_features = x.shape
+	rng = np.random.default_rng(random_state)
+
+	# 1. Inertie observée sur les vraies données
+	model_obs = KMeans(
+		n_clusters=k, max_iter=max_iter, tol=tol,
+		random_state=random_state, init=init,
+	)
+	model_obs.fit(x)
+	log_wk = np.log(model_obs.inertia_)
+
+	# 2. Bornes de l'espace des données (pour générer les références)
+	data_min = x.min(axis=0)
+	data_max = x.max(axis=0)
+
+	# 3. Génération des B jeux de référence et calcul des inerties
+	log_wk_star_sum = 0.0
+	for _ in range(n_refs):
+		# Distribution uniforme dans le bounding-box des données
+		x_ref = rng.uniform(
+			low=data_min,
+			high=data_max,
+			size=(n_samples, n_features),
+		)
+		model_ref = KMeans(
+			n_clusters=k, max_iter=max_iter, tol=tol,
+			random_state=None, init=init,
+		)
+		model_ref.fit(x_ref)
+		log_wk_star_sum += np.log(model_ref.inertia_)
+
+	# 4. Gap(K) = moyenne des log(W*_k) - log(W_k)
+	gap = (log_wk_star_sum / n_refs) - log_wk
+	return float(gap)
+
+
 def _find_elbow_point(inertias: list[float]) -> int:
 	"""Détecte le point de coude sur une courbe d'inertie.
 
@@ -546,6 +628,7 @@ def find_optimal_k(
 	silhouette_scores: list[float] = []
 	davies_bouldin_scores: list[float] = []
 	calinski_harabasz_scores: list[float] = []
+	gap_scores: list[float] = []
 	custom_scores: list[float] | None = [] if scoring is not None else None
 
 	for k in ks:
@@ -562,6 +645,8 @@ def find_optimal_k(
 		silhouette_scores.append(silhouette_score(x, model.labels_))
 		davies_bouldin_scores.append(davies_bouldin_score(x, model.labels_))
 		calinski_harabasz_scores.append(calinski_harabasz_score(x, model.labels_))
+		gap_scores.append(gap_statistic(x, k, random_state=random_state, init=init,
+		                                max_iter=max_iter, tol=tol))
 
 		if scoring is not None:
 			custom_scores.append(scoring(x, model.labels_))
@@ -588,16 +673,21 @@ def find_optimal_k(
 	ch_arr = np.array(calinski_harabasz_scores)
 	best_k_calinski_harabasz = ks[int(np.argmax(ch_arr))]
 
+	gap_arr = np.array(gap_scores)
+	best_k_gap = ks[int(np.argmax(gap_arr))]
+
 	result: dict = {
 		"ks": ks,
 		"inertias": inertias,
 		"silhouette_scores": silhouette_scores,
 		"davies_bouldin_scores": davies_bouldin_scores,
 		"calinski_harabasz_scores": calinski_harabasz_scores,
+		"gap_scores": gap_scores,
 		"best_k_elbow": best_k_elbow,
 		"best_k_silhouette": best_k_silhouette,
 		"best_k_davies_bouldin": best_k_davies_bouldin,
 		"best_k_calinski_harabasz": best_k_calinski_harabasz,
+		"best_k_gap": best_k_gap,
 	}
 
 	if custom_scores is not None:
@@ -632,19 +722,22 @@ if __name__ == "__main__":
 	print("=" * 60)
 	results = find_optimal_k(data, max_k=8, random_state=7)
 
-	for k, inert, sil, db, ch in zip(
+	for k, inert, sil, db, ch, gap in zip(
 		results["ks"],
 		results["inertias"],
 		results["silhouette_scores"],
 		results["davies_bouldin_scores"],
 		results["calinski_harabasz_scores"],
+		results["gap_scores"],
 	):
 		print(
 			f"K={k:>2d}  Inertie={inert:>10.2f}  Silhouette={sil:>7.4f}  "
-			f"Davies-Bouldin={db:>7.4f}  Calinski-Harabasz={ch:>10.2f}"
+			f"Davies-Bouldin={db:>7.4f}  Calinski-Harabasz={ch:>10.2f}  "
+			f"Gap={gap:>7.4f}"
 		)
 
 	print(f"\nK optimal (coude)            : {results['best_k_elbow']}")
 	print(f"K optimal (silhouette)       : {results['best_k_silhouette']}")
 	print(f"K optimal (Davies-Bouldin)   : {results['best_k_davies_bouldin']}")
 	print(f"K optimal (Calinski-Harabasz): {results['best_k_calinski_harabasz']}")
+	print(f"K optimal (Gap Statistic)    : {results['best_k_gap']}")
