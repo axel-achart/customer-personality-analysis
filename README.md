@@ -154,7 +154,7 @@ python -m venv .venv
 # Windows : .venv\Scripts\activate    |    macOS / Linux : source .venv/bin/activate
 pip install -r requirements.txt
 
-python kmeans.py                 # test rapide : notre K-Means vs scikit-learn sur Iris
+python kmeans.py                 # test rapide : notre K-Means vs scikit-learn sur Iris (150 fleurs)
 jupyter notebook notebook.ipynb  # notebook principal
 ```
 
@@ -167,6 +167,8 @@ uv run --with jupyter jupyter notebook notebook.ipynb
 ```
 
 Le notebook lit `data/raw/marketing_campaign.csv` en chemin relatif : il faut le lancer depuis la racine du repo.
+
+`python kmeans.py` travaille sur les 150 fleurs d'Iris, sans retirer le doublon : il affiche une inertie de 140,03 pour notre implémentation et de 139,82 pour scikit-learn, deux optimums locaux très proches. Le notebook, lui, retire le doublon (149 fleurs) et obtient 138,77 des deux côtés.
 
 ## Équipe
 
@@ -334,7 +336,7 @@ python -m venv .venv
 # Windows: .venv\Scripts\activate    |    macOS / Linux: source .venv/bin/activate
 pip install -r requirements.txt
 
-python kmeans.py                 # quick check: our K-Means vs scikit-learn on Iris
+python kmeans.py                 # quick check: our K-Means vs scikit-learn on Iris (150 flowers)
 jupyter notebook notebook.ipynb  # main notebook
 ```
 
@@ -347,6 +349,8 @@ uv run --with jupyter jupyter notebook notebook.ipynb
 ```
 
 The notebook reads `data/raw/marketing_campaign.csv` with a relative path, so run it from the repository root.
+
+`python kmeans.py` uses all 150 Iris flowers without removing the duplicate: it prints an inertia of 140.03 for our implementation and 139.82 for scikit-learn, two very close local optima. The notebook removes the duplicate (149 flowers) and gets 138.77 for both.
 
 ## Team
 
