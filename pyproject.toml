@@ -1,17 +1,20 @@
 [project]
 name = "customer-personality-analysis"
 version = "0.1.0"
-description = "Add your description here"
+description = "Segmentation de la clientèle d'une épicerie par clustering (K-Means, CAH, GMM)"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
     "matplotlib>=3.10.9",
+    "numpy>=2.2.6",
     "pandas>=2.3.3",
     "scikit-learn>=1.7.2",
+    "scipy>=1.15.3",
     "seaborn>=0.13.2",
 ]
 
 [dependency-groups]
 dev = [
+    "ipykernel",
     "nbconvert>=7.17.1",
 ]
