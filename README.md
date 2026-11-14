@@ -1,162 +1,365 @@
-# customer-personality-analysis
-"Statistics show that statistics cannot be trusted."
+<div align="center">
+
+**[🇫🇷 Français](#fr)** · **[🇬🇧 English](#en)**
+
+</div>
 
 ---
 
-## Contexte du projet
+<a id="fr"></a>
 
-Ce projet a pour but de segmenter la clientèle d'une épicerie de quartier par apprentissage non supervisé, afin de mieux comprendre qui sont ses clients et d'adapter ses actions marketing à chaque groupe plutôt que de communiquer de la même façon auprès de tout le monde.
+# Customer Personality Analysis
 
-Avant de travailler sur les données réelles de l'épicerie, le dataset **Iris** est utilisé comme cas d'école : ses 3 classes sont connues à l'avance, ce qui permet de valider notre propre implémentation de K-Means (`kmeans.py`) en la comparant à un clustering dont on connaît la "bonne réponse".
+**Segmenter les clients d'une épicerie en groupes homogènes pour adapter chaque campagne marketing au lieu de parler à tout le monde de la même façon.**
 
----
+## En bref
+
+- **Problème** : une épicerie envoie les mêmes messages à tous ses clients, alors qu'ils n'ont ni les mêmes moyens ni les mêmes habitudes.
+- **Données** : 2 240 fiches clients (revenu, âge, famille, dépenses par produit, canaux d'achat, réponses aux campagnes), 2 208 conservées après nettoyage.
+- **Méthode** : regroupement automatique des clients qui se ressemblent (apprentissage non supervisé), en comparant 3 algorithmes et en codant nous-mêmes l'algorithme principal.
+- **Résultat** : 4 profils clients clairs (premium, fidèles, familles à budget modéré, jeunes connectés), chacun avec une piste d'action marketing.
+
+## Sommaire
+
+[Contexte](#contexte-et-problématique) · [Données](#données) · [Méthode](#méthode) · [Résultats](#résultats) · [Limites](#limites-et-pistes-damélioration) · [Structure](#structure-du-repo) · [Installation](#installation-et-exécution) · [Équipe](#équipe) · [Stack](#stack-technique)
+
+## Contexte et problématique
+
+Une épicerie de quartier veut mieux connaître sa clientèle pour arrêter de communiquer de la même manière auprès de tout le monde. Il n'existe aucune étiquette « type de client » dans les données : il faut donc **découvrir** les groupes à partir des comportements, puis décrire chaque groupe de façon exploitable par une équipe marketing.
+
+Le projet se déroule en deux temps :
+
+1. **Iris (cas d'école)** : un dataset dont les 3 classes sont connues sert à valider notre propre implémentation de K-Means, comparée à celle de scikit-learn.
+2. **Épicerie (cas réel)** : la même démarche est appliquée, sans vérité terrain, aux données clients.
 
 ## Données
 
-**Iris** (`sklearn.datasets.load_iris`) : 150 fleurs, 4 mesures (longueur/largeur des sépales et pétales) réparties en 3 espèces. Dataset propre, sans valeur manquante, utilisé uniquement pour valider les algorithmes.
+| | Iris | Épicerie |
+|---|---|---|
+| Source | `sklearn.datasets.load_iris` | `data/raw/marketing_campaign.csv` (dataset public Kaggle [*Customer Personality Analysis*](https://www.kaggle.com/datasets/imakash3011/customer-personality-analysis)) |
+| Taille brute | 150 fleurs × 4 mesures | 2 240 clients × 29 colonnes |
+| Après nettoyage | 149 (1 doublon retiré) | 2 208 clients |
 
-**Épicerie** (`data/raw/marketing_campaign.csv`) : 2240 clients, 29 colonnes brutes (année de naissance, revenu, statut marital, nombre d'enfants, dépenses par catégorie de produit, nombre d'achats par canal, réponses aux campagnes marketing, etc.). Après nettoyage (valeurs manquantes sur le revenu, catégories aberrantes, quelques outliers d'âge/revenu), il reste 2208 clients. Plusieurs variables ont ensuite été recalculées par feature engineering (âge, ancienneté, dépenses totales, nombre d'achats total, nombre d'enfants, campagnes acceptées) pour remplacer des colonnes détaillées très corrélées entre elles. Le détail de l'exploration, du nettoyage et du feature engineering se trouve dans `notebook.ipynb`.
+**Principales variables de l'épicerie** : année de naissance, niveau d'études, statut marital, revenu, enfants et adolescents au foyer, date d'inscription, jours depuis le dernier achat, dépenses par catégorie (vin, fruits, viande, poisson, sucreries, or), nombre d'achats par canal (promotions, web, catalogue, magasin), visites web par mois, réponses aux 6 campagnes marketing (`AcceptedCmp1` à `AcceptedCmp5`, `Response`), réclamations.
 
----
+## Méthode
 
-## Veille technique
+**1. Nettoyage** (2 240 → 2 208 clients)
+- 24 clients sans revenu supprimés ;
+- 4 statuts maritaux aberrants supprimés (« Absurd », « YOLO ») ;
+- 3 clients nés avant 1930 et 1 revenu supérieur à 200 000 retirés comme valeurs aberrantes.
 
-### Regroupement non supervisé
+**2. Exploration** : statistiques descriptives, distributions et matrice de corrélation. Celle-ci montre que les dépenses par produit et les achats par canal sont très corrélés entre eux.
 
-Le regroupement non supervisé, aussi appelé classification non supervisée, consiste à rassembler des données non étiquetées en groupes homogènes à partir de leurs similitudes, sans qu'un modèle ait été préalablement entraîné sur des exemples connus.
+**3. Feature engineering et préparation**
+- variables créées : âge (calculé à la date d'inscription la plus récente du dataset), ancienneté client en jours, dépenses totales, nombre total d'achats, nombre total de campagnes acceptées, nombre d'enfants ;
+- regroupement des modalités : études en 3 niveaux, statut marital en « en couple » / « seul » ;
+- encodage one-hot puis standardisation (31 colonnes).
 
-Source : [Google Cloud](https://cloud.google.com/discover/supervised-vs-unsupervised-learning?hl=fr)
+**4. Réduction de dimension**
+- sélection de variables : les colonnes détaillées, redondantes avec les agrégats, sont retirées, il en reste **13** ;
+- ACP à **3 composantes**, qui conservent **47,1 %** de la variance (26,0 % + 11,2 % + 9,9 %).
 
----
+**5. Choix du nombre de groupes** : méthode du coude et score de silhouette pour k = 2 à 7.
 
-### Clustering
+**6. Modèles comparés** (même k, mêmes données)
+- **K-Means** (scikit-learn) ;
+- **Classification ascendante hiérarchique** (CAH, critère de Ward), avec dendrogramme ;
+- **Mélange de gaussiennes** (GMM).
 
-Le clustering est une technique de machine learning non supervisée conçue pour regrouper des exemples non étiquetés en fonction de leur similarité. Il permet d'identifier des tendances et des structures cachées dans les données.
+**Choix final : K-Means avec 4 groupes.** C'est l'algorithme qui obtient le meilleur score de silhouette des trois. Le score seul favorise k = 2 (0,371), mais 2 groupes ne suffisent pas à différencier des campagnes. **k = 4** est retenu parce qu'il donne des segments interprétables et de tailles équilibrées.
 
-Source : [Google ML Glossary](https://developers.google.com/machine-learning/clustering/overview?hl=fr)
+**Validation sur Iris** : notre K-Means codé à la main (`kmeans.py` : algorithme de Lloyd, initialisation k-means++, 10 essais conservant la meilleure inertie) obtient **exactement la même inertie que scikit-learn (138,77)** et isole parfaitement les 50 *setosa*.
 
----
+La veille technique (algorithmes, choix de K, mesures de qualité) est détaillée dans [`docs/veille.md`](docs/veille.md).
 
-### Algorithmes de classification non supervisée
+## Résultats
 
-La classification non supervisée regroupe les données sans étiquettes connues à l'avance. Les algorithmes se répartissent en plusieurs familles :
+**En clair** : les 2 208 clients se répartissent en 4 groupes de taille comparable (entre 499 et 657 clients). Chaque groupe a un niveau de revenu, une façon d'acheter et une réceptivité aux campagnes qui lui sont propres. L'épicerie peut donc adresser à chacun un message différent.
 
-**- Par partitionnement (centroïdes)**
+### Les 4 profils clients
 
-**K-Means** : regroupe les points en K groupes selon leur proximité au centroïde de chaque cluster. C'est la méthode de partitionnement la plus répandue en machine learning.
+| Profil | Clients | Ce qui le caractérise | Action marketing suggérée par l'analyse |
+|---|---|---|---|
+| **Premium** | 531 | Revenu le plus élevé, dépenses de loin les plus fortes, presque pas d'enfants, le groupe qui accepte le plus les campagnes | Cible prioritaire des offres premium |
+| **Fidèles** | 521 | Revenu confortable, dépenses élevées, le plus grand nombre d'achats et la plus longue ancienneté | Segment stable et engagé, à fidéliser |
+| **Familles à budget modéré** | 657 | Revenu moyen, le plus d'enfants au foyer, peu d'achats et des dépenses limitées | Offres familiales ou promotions |
+| **Jeunes connectés** | 499 | Les plus jeunes et le revenu le plus faible, les dépenses les plus basses, mais le plus de visites sur le site web | Convertir progressivement vers plus de dépenses |
 
-**- Par hiérarchie (dendrogramme CAH)**
+### Détail technique
 
-**Clustering hiérarchique ascendant (agglomératif)** : chaque exemple démarre dans son propre cluster, puis les clusters les plus proches sont fusionnés itérativement pour former un arbre hiérarchique.
+**Comparaison des algorithmes** (k = 4, sur les 3 composantes de l'ACP)
 
-**Clustering hiérarchique descendant (divisif)** : tous les exemples sont regroupés en un seul cluster, puis divisés itérativement.
+| Algorithme | Silhouette | Tailles des groupes |
+|---|---|---|
+| **K-Means** (retenu) | **0,285** | 657 / 499 / 531 / 521 |
+| GMM | 0,256 | 528 / 593 / 512 / 575 |
+| CAH (Ward) | 0,226 | 801 / 478 / 459 / 470 |
 
-**- Par densité**
+**Choix de k (K-Means)**
 
-**DBSCAN** : identifie des clusters en se basant sur la densité des points, ce qui permet de détecter des formes arbitraires et de gérer efficacement les points de bruit.
+| k | 2 | 3 | 4 | 5 | 6 | 7 |
+|---|---|---|---|---|---|---|
+| Inertie | 7 864,82 | 6 355,92 | 5 188,51 | 4 538,20 | 3 982,26 | 3 648,51 |
+| Silhouette | 0,371 | 0,291 | 0,285 | 0,273 | 0,271 | 0,266 |
 
-**OPTICS** : extension de DBSCAN qui gère mieux les clusters de densités variables.
+**Profil moyen par groupe (K-Means)**
 
----
+| Profil | Revenu | Âge | Dépenses totales | Achats totaux | Enfants | Ancienneté (jours) | Campagnes acceptées | Visites web / mois |
+|---|---|---|---|---|---|---|---|---|
+| Premium | 77 800,6 | 45,3 | 1 336,7 | 20,4 | 0,2 | 300,4 | 1,0 | 2,4 |
+| Fidèles | 59 072,0 | 49,3 | 894,9 | 22,1 | 1,1 | 509,3 | 0,5 | 6,0 |
+| Familles à budget modéré | 41 883,3 | 47,8 | 158,5 | 9,7 | 1,4 | 243,2 | 0,1 | 5,8 |
+| Jeunes connectés | 30 231,1 | 37,0 | 120,0 | 8,3 | 1,0 | 396,9 | 0,2 | 7,1 |
 
-### Fonctionnement de 3 algorithmes
+**Iris (validation)** : inertie de 138,77 pour notre implémentation comme pour scikit-learn. Silhouette de 0,581 à k = 2 et de 0,461 à k = 3. *Versicolor* et *virginica* se chevauchent partiellement.
 
-**- K-Means**
+## Limites et pistes d'amélioration
 
-L'algorithme initialise K centroïdes (aléatoirement ou issus du dataset), puis itère jusqu'à convergence :
+**Limites**
+- **Séparation modeste** : une silhouette de 0,285 indique des groupes qui se chevauchent, ce qui est fréquent sur des données clients réelles (sur Iris, le score atteint 0,58).
+- **Choix de k** : k = 4 est un choix d'interprétabilité métier, le score de silhouette seul désignant k = 2.
+- **Information perdue** : l'ACP à 3 composantes ne conserve que 47,1 % de l'information.
+- **Variables mélangées** : les variables catégorielles encodées sont mélangées aux variables numériques dans une même distance euclidienne.
+- **Pas de test terrain** : les actions marketing sont des pistes issues du profil moyen de chaque groupe. Elles n'ont pas été testées sur le terrain.
+- **Module non exécuté** : le module de métriques de Kylliann ([`travaux/kylliann/`](travaux/kylliann/)) n'a pas encore été exécuté sur les données de l'épicerie.
 
-1. Chaque point est assigné au centroïde le plus proche.
-2. Les centroïdes sont recalculés comme la moyenne des points du cluster.
-3. On répète jusqu'à stabilisation.
+**Pistes**
+- tester d'autres nombres de composantes, ou une analyse factorielle multiple (AFM) adaptée au mélange quantitatif / catégoriel ;
+- essayer DBSCAN pour isoler les clients atypiques ;
+- pondérer les variables selon leur importance métier (revenu, dépenses) ;
+- compléter l'évaluation avec les indices de Davies-Bouldin, de Calinski-Harabasz et la statistique Gap, déjà codés dans `travaux/kylliann/kmeans.py`.
 
-Avantage : simple, rapide et scalable. Limite : K doit être fixé à l'avance ; sensible aux outliers et aux formes non convexes.
+## Structure du repo
 
-**- Clustering hiérarchique ascendant**
-
-Chaque point démarre dans son propre cluster. On calcule la matrice de ressemblance entre tous les couples, puis on fusionne itérativement les deux clusters les plus proches. Le résultat est un dendrogramme que l'on coupe à la hauteur voulue pour obtenir le nombre de clusters souhaité.
-
-Avantage : pas besoin de fixer K a priori ; visualisation intuitive. Limite : coûteux en mémoire et en calcul sur de grands datasets.
-
-**- DBSCAN**
-
-Deux paramètres gouvernent l'algorithme : ε (distance maximale entre deux points voisins) et MinPts (nombre minimum de points pour former un cluster dense).
-
-1. Un point avec au moins MinPts voisins dans un rayon ε est un point central (core point).
-2. L'algorithme explore les voisins et ajoute les points éligibles au cluster.
-3. Les points n'appartenant à aucun cluster sont marqués comme bruit (noise).
-
-Avantage : détecte des formes quelconques, isole les outliers naturellement, ne nécessite pas de fixer K. Limite : peu efficace quand les clusters ont des densités variables ; difficile à paramétrer en haute dimension.
-
----
-
-### Méthodes de sélection du nombre optimal de clusters
-
-**Méthode du coude (Elbow Method)** : méthode graphique qui trace l'inertie en fonction du nombre de clusters K. On recherche le point d'inflexion (le "coude") où l'ajout d'un cluster supplémentaire n'apporte plus de gain significatif.
-Source : [IBM](https://www.ibm.com/fr-fr/think/topics/k-means-clustering)
-
-**Score de silhouette** : mesure la similarité d'un point avec son propre cluster par rapport aux autres clusters. Plus le score est élevé, meilleur est le clustering.
-Source : [Medium – therised](https://therised.medium.com/determining-the-number-of-clusters-a-comprehensive-guide-1a2441c5a526)
-
-**Statistiques d'écart (Gap Statistics)** : compare les performances du clustering sur les données réelles à celles obtenues sur des données aléatoires, afin de déterminer si la structure identifiée est réelle.
-Source : [Medium – therised](https://therised.medium.com/determining-the-number-of-clusters-a-comprehensive-guide-1a2441c5a526)
-
----
-
-### Mesures de qualité d'un cluster
-
-Les métriques internes évaluent la qualité du clustering sans étiquettes de référence. Ce sont les seules disponibles dans un contexte vraiment non supervisé.
-
-**Silhouette Score**
-
-Pour chaque point i, on calcule a(i) (distance moyenne au sein de son cluster) et b(i) (distance moyenne au cluster le plus proche). Le score est : `s(i) = (b(i) - a(i)) / max(a(i), b(i))`, et varie de −1 à +1.
-
-| Score | Interprétation |
+| Fichier / dossier | Rôle |
 |---|---|
-| Proche de +1 | Bien clusterisé |
-| Autour de 0 | Proche d'une frontière |
-| Proche de −1 | Probablement mal classé |
+| [`notebook.ipynb`](notebook.ipynb) | Notebook principal : Iris (validation), puis épicerie (nettoyage, exploration, ACP, 3 algorithmes, profiling) |
+| [`kmeans.py`](kmeans.py) | K-Means codé à la main (Lloyd, k-means++, `n_init`), utilisé par le notebook |
+| [`data/raw/marketing_campaign.csv`](data/raw/marketing_campaign.csv) | Données brutes de l'épicerie (séparateur tabulation) |
+| [`docs/veille.md`](docs/veille.md) | Veille technique : algorithmes, choix de K, mesures de qualité |
+| [`docs/images/`](docs/images/) | Illustrations de la veille |
+| [`travaux/kylliann/`](travaux/kylliann/) | Module de Kylliann : K-Means et métriques de choix de K en NumPy pur, avec son notebook de démonstration |
+| `requirements.txt` | Dépendances (pip) |
+| `pyproject.toml`, `uv.lock`, `.python-version` | Dépendances (uv), Python 3.10 |
 
-Source : Peter Rousseeuw, 1987 (Wikipedia / arXiv)
+## Installation et exécution
 
+Avec **pip** (Python 3.10 ou plus) :
 
+```bash
+git clone https://github.com/axel-achart/customer-personality-analysis.git
+cd customer-personality-analysis
+python -m venv .venv
+# Windows : .venv\Scripts\activate    |    macOS / Linux : source .venv/bin/activate
+pip install -r requirements.txt
 
+python kmeans.py                 # test rapide : notre K-Means vs scikit-learn sur Iris
+jupyter notebook notebook.ipynb  # notebook principal
+```
+
+Avec **uv** :
+
+```bash
+uv sync
+uv run python kmeans.py
+uv run --with jupyter jupyter notebook notebook.ipynb
+```
+
+Le notebook lit `data/raw/marketing_campaign.csv` en chemin relatif : il faut le lancer depuis la racine du repo.
+
+## Équipe
+
+| Membre | GitHub | Contributions principales |
+|---|---|---|
+| Axel Achart | [axel-achart](https://github.com/axel-achart) | Notebook Iris et épicerie, K-Means codé à la main, veille (synthèse) |
+| Hippolyte Geslain | [Hippolyte-Geslain](https://github.com/Hippolyte-Geslain) | Lancement du projet, veille, première version de la fonction K-Means, intégration sur `develop` |
+| Kylliann Larcher | [kylliann-larcher](https://github.com/kylliann-larcher) | Veille (algorithmes, schémas, sources), module de métriques en NumPy pur (`travaux/kylliann/`) |
+
+Projet réalisé à **LaPlateforme_** (Marseille), dans le cadre du **Bachelor IA / Data**, en juin et juillet 2026.
+
+## Stack technique
+
+Python 3.10 · pandas · NumPy · scikit-learn · SciPy · Matplotlib · Seaborn · Jupyter · uv
+
+<p align="right"><a href="#fr">↑ Haut de page</a> · <a href="#en">🇬🇧 English version</a></p>
 
 ---
-**Indice Davies-Bouldin (DBI)**
 
-Mesure la similarité moyenne entre chaque cluster et son plus proche voisin, en comparant le rapport dispersion interne / distance entre centroïdes. Une valeur plus basse indique une meilleure qualité de clustering.
-Source : scikit-learn docs / GeeksforGeeks / arXiv
+<a id="en"></a>
 
-**Inertie (Within-Cluster Sum of Squares)**
+# Customer Personality Analysis
 
-Somme des distances au carré entre chaque point et le centroïde de son cluster. Une forte inertie inter-classes traduit une bonne séparation des clusters, tandis qu'une faible inertie intra-classe traduit leur compacité. Utilisée notamment pour la méthode du coude.
-Source : HAL
+**Segmenting a grocery store's customers into homogeneous groups so each marketing campaign can be tailored, instead of sending the same message to everyone.**
 
-**Calinski-Harabasz Index**
+## At a glance
 
-Mesure le rapport entre la variance inter-clusters et la variance intra-cluster. Un score plus élevé signifie des clusters compacts et bien séparés. Cet indice aide à déterminer le nombre idéal de clusters.
-Source : GeeksforGeeks
+- **Problem**: a grocery store sends the same messages to all its customers, even though they have neither the same budget nor the same habits.
+- **Data**: 2,240 customer records (income, age, household, spending per product, purchase channels, campaign responses), 2,208 kept after cleaning.
+- **Approach**: automatically grouping similar customers (unsupervised learning), comparing 3 algorithms and coding the main one ourselves.
+- **Outcome**: 4 clear customer profiles (premium, loyal, budget-conscious families, young digital-first), each with a marketing lead.
 
----
+## Contents
 
-## Algorithmes utilisés
+[Context](#context-and-problem) · [Data](#data) · [Approach](#approach) · [Results](#results) · [Limitations](#limitations-and-next-steps) · [Structure](#repository-structure) · [Installation](#installation-and-usage) · [Team](#team) · [Tech stack](#tech-stack)
 
-- **K-Means** : implémenté à la main dans `kmeans.py` (algorithme de Lloyd, initialisation k-means++, plusieurs essais gardés selon l'inertie), puis comparé à `sklearn.cluster.KMeans` sur Iris pour vérifier que les deux tombent sur le même résultat. Utilisé ensuite comme algorithme principal sur les données de l'épicerie (via scikit-learn).
-- **Clustering hiérarchique ascendant (Agglomerative Clustering, linkage="ward")** : appliqué sur l'épicerie, avec un dendrogramme pour visualiser les regroupements successifs.
-- **Gaussian Mixture Model (GMM)** : appliqué sur l'épicerie, pour comparer une approche probabiliste (mélange de gaussiennes) aux deux méthodes précédentes basées sur la distance.
+## Context and problem
 
-Le nombre de clusters (k=3 pour Iris, k=4 pour l'épicerie) a été choisi via la méthode du coude et le score de silhouette. Les 3 algorithmes ont ensuite été comparés entre eux sur ce même k avec le score de silhouette, avant de profiler les clusters obtenus.
+A neighbourhood grocery store wants to know its customers better and stop addressing everyone the same way. The data contains no "customer type" label, so the groups have to be **discovered** from behaviour, then described in a way a marketing team can act on.
 
-Sur l'épicerie, une réduction de dimension a été faite en amont : sélection de features pour retirer les variables détaillées redondantes (remplacées par les agrégats du feature engineering), puis PCA à 3 composantes (~47% de variance conservée) pour travailler sur un espace plus compact et plus facile à visualiser.
+The project has two stages:
 
----
+1. **Iris (warm-up)**: a dataset with 3 known classes, used to validate our own K-Means implementation against scikit-learn's.
+2. **Grocery store (real case)**: the same approach applied to customer data, with no ground truth.
 
-## Conclusion
+## Data
 
-Sur Iris, notre implémentation de K-Means donne exactement les mêmes résultats que celle de scikit-learn, ce qui valide l'algorithme. Le clustering retrouve bien la structure des 3 espèces, à l'exception de *versicolor* et *virginica* qui se chevauchent légèrement dans l'espace des variables.
+| | Iris | Grocery store |
+|---|---|---|
+| Source | `sklearn.datasets.load_iris` | `data/raw/marketing_campaign.csv` (public Kaggle dataset [*Customer Personality Analysis*](https://www.kaggle.com/datasets/imakash3011/customer-personality-analysis)) |
+| Raw size | 150 flowers × 4 measurements | 2,240 customers × 29 columns |
+| After cleaning | 149 (1 duplicate removed) | 2,208 customers |
 
-Sur l'épicerie, la tâche est plus difficile : il n'y a pas de vraie étiquette à retrouver, et les scores de silhouette obtenus (~0.2-0.3) sont nettement plus modestes que sur Iris. K-Means est l'algorithme qui a le mieux performé parmi les 3 testés, devant le clustering hiérarchique et le GMM. Le profiling des 4 clusters fait ressortir des segments clients assez naturels : des clients premium à forte valeur, des clients fidèles à fréquence d'achat élevée, des familles à budget modéré, et des jeunes clients digital-first à faible pouvoir d'achat mais fort potentiel.
+**Main grocery variables**: year of birth, education, marital status, income, children and teenagers at home, sign-up date, days since last purchase, spending per category (wine, fruit, meat, fish, sweets, gold), number of purchases per channel (deals, web, catalogue, store), monthly web visits, responses to the 6 marketing campaigns (`AcceptedCmp1` to `AcceptedCmp5`, `Response`), complaints.
 
-Le détail complet (visualisations, chiffres, interprétations) est dans `notebook.ipynb`. Pour la suite, plusieurs pistes restent à creuser : tester une MFA plutôt qu'une PCA classique pour mieux gérer le mélange de variables quantitatives et catégorielles, essayer DBSCAN pour isoler les clients atypiques, ou pondérer certaines variables (revenu, dépenses) selon leur importance métier avant de relancer le clustering.
+## Approach
 
----
+**1. Cleaning** (2,240 → 2,208 customers)
+- 24 customers with no income removed;
+- 4 invalid marital statuses removed ("Absurd", "YOLO");
+- 3 customers born before 1930 and 1 income above 200,000 removed as outliers.
+
+**2. Exploration**: descriptive statistics, distributions and a correlation matrix. It shows that spending per product and purchases per channel are strongly correlated with each other.
+
+**3. Feature engineering and preparation**
+- new variables: age (computed at the most recent sign-up date in the dataset), customer tenure in days, total spending, total purchases, total accepted campaigns, number of children;
+- category grouping: education into 3 levels, marital status into "partner" / "single";
+- one-hot encoding, then standardisation (31 columns).
+
+**4. Dimensionality reduction**
+- feature selection: detailed columns that duplicate the aggregates are dropped, leaving **13**;
+- PCA with **3 components**, keeping **47.1%** of the variance (26.0% + 11.2% + 9.9%).
+
+**5. Number of groups**: elbow method and silhouette score for k = 2 to 7.
+
+**6. Models compared** (same k, same data)
+- **K-Means** (scikit-learn);
+- **Agglomerative hierarchical clustering** (Ward linkage), with a dendrogram;
+- **Gaussian Mixture Model** (GMM).
+
+**Final choice: K-Means with 4 groups.** It gets the best silhouette score of the three. The score alone favours k = 2 (0.371), but 2 groups are not enough to differentiate campaigns. **k = 4** was chosen because it gives interpretable, balanced segments.
+
+**Validation on Iris**: our hand-coded K-Means (`kmeans.py`: Lloyd's algorithm, k-means++ initialisation, 10 runs keeping the best inertia) reaches **exactly the same inertia as scikit-learn (138.77)** and perfectly isolates the 50 *setosa*.
+
+The technical research notes (algorithms, choosing K, quality metrics) are in [`docs/veille.md`](docs/veille.md) (in French).
+
+## Results
+
+**In plain terms**: the 2,208 customers split into 4 groups of similar size (between 499 and 657 customers). Each group has its own income level, buying pattern and response to campaigns, so the store can send each one a different message.
+
+### The 4 customer profiles
+
+| Profile | Customers | Key traits | Marketing action suggested by the analysis |
+|---|---|---|---|
+| **Premium** | 531 | Highest income, by far the highest spending, almost no children, most responsive to campaigns | Priority target for premium offers |
+| **Loyal** | 521 | Comfortable income, high spending, most purchases and longest tenure | Stable, engaged segment to retain |
+| **Budget-conscious families** | 657 | Average income, most children at home, few purchases and limited spending | Family offers or promotions |
+| **Young digital-first** | 499 | Youngest and lowest income, lowest spending, but the most website visits | Gradually convert to higher spending |
+
+### Technical details
+
+**Algorithm comparison** (k = 4, on the 3 PCA components)
+
+| Algorithm | Silhouette | Group sizes |
+|---|---|---|
+| **K-Means** (selected) | **0.285** | 657 / 499 / 531 / 521 |
+| GMM | 0.256 | 528 / 593 / 512 / 575 |
+| Agglomerative (Ward) | 0.226 | 801 / 478 / 459 / 470 |
+
+**Choosing k (K-Means)**
+
+| k | 2 | 3 | 4 | 5 | 6 | 7 |
+|---|---|---|---|---|---|---|
+| Inertia | 7,864.82 | 6,355.92 | 5,188.51 | 4,538.20 | 3,982.26 | 3,648.51 |
+| Silhouette | 0.371 | 0.291 | 0.285 | 0.273 | 0.271 | 0.266 |
+
+**Average profile per group (K-Means)**
+
+| Profile | Income | Age | Total spending | Total purchases | Children | Tenure (days) | Accepted campaigns | Web visits / month |
+|---|---|---|---|---|---|---|---|---|
+| Premium | 77,800.6 | 45.3 | 1,336.7 | 20.4 | 0.2 | 300.4 | 1.0 | 2.4 |
+| Loyal | 59,072.0 | 49.3 | 894.9 | 22.1 | 1.1 | 509.3 | 0.5 | 6.0 |
+| Budget-conscious families | 41,883.3 | 47.8 | 158.5 | 9.7 | 1.4 | 243.2 | 0.1 | 5.8 |
+| Young digital-first | 30,231.1 | 37.0 | 120.0 | 8.3 | 1.0 | 396.9 | 0.2 | 7.1 |
+
+**Iris (validation)**: an inertia of 138.77 for both our implementation and scikit-learn. Silhouette of 0.581 at k = 2 and 0.461 at k = 3. *Versicolor* and *virginica* partly overlap.
+
+## Limitations and next steps
+
+**Limitations**
+- **Modest separation**: a silhouette of 0.285 means the groups overlap, which is common on real customer data (Iris reaches 0.58).
+- **Choice of k**: k = 4 is a business-interpretability choice; the silhouette score alone points to k = 2.
+- **Lost information**: the 3-component PCA keeps only 47.1% of the information.
+- **Mixed variables**: encoded categorical variables are mixed with numeric ones in a single Euclidean distance.
+- **Not field-tested**: the marketing actions are leads derived from each group's average profile. They have not been tested in practice.
+- **Module not yet run**: Kylliann's metrics module ([`travaux/kylliann/`](travaux/kylliann/)) has not yet been run on the grocery data.
+
+**Next steps**
+- try other numbers of components, or a Multiple Factor Analysis (MFA) suited to mixed numeric / categorical data;
+- try DBSCAN to isolate atypical customers;
+- weight variables by business importance (income, spending);
+- extend the evaluation with the Davies-Bouldin and Calinski-Harabasz indices and the Gap statistic, already coded in `travaux/kylliann/kmeans.py`.
+
+## Repository structure
+
+| File / folder | Role |
+|---|---|
+| [`notebook.ipynb`](notebook.ipynb) | Main notebook: Iris (validation), then grocery store (cleaning, exploration, PCA, 3 algorithms, profiling) |
+| [`kmeans.py`](kmeans.py) | Hand-coded K-Means (Lloyd, k-means++, `n_init`), used by the notebook |
+| [`data/raw/marketing_campaign.csv`](data/raw/marketing_campaign.csv) | Raw grocery data (tab-separated) |
+| [`docs/veille.md`](docs/veille.md) | Technical research notes (French): algorithms, choosing K, quality metrics |
+| [`docs/images/`](docs/images/) | Illustrations for the research notes |
+| [`travaux/kylliann/`](travaux/kylliann/) | Kylliann's module: pure-NumPy K-Means and K-selection metrics, with its demo notebook |
+| `requirements.txt` | Dependencies (pip) |
+| `pyproject.toml`, `uv.lock`, `.python-version` | Dependencies (uv), Python 3.10 |
+
+## Installation and usage
+
+With **pip** (Python 3.10 or later):
+
+```bash
+git clone https://github.com/axel-achart/customer-personality-analysis.git
+cd customer-personality-analysis
+python -m venv .venv
+# Windows: .venv\Scripts\activate    |    macOS / Linux: source .venv/bin/activate
+pip install -r requirements.txt
+
+python kmeans.py                 # quick check: our K-Means vs scikit-learn on Iris
+jupyter notebook notebook.ipynb  # main notebook
+```
+
+With **uv**:
+
+```bash
+uv sync
+uv run python kmeans.py
+uv run --with jupyter jupyter notebook notebook.ipynb
+```
+
+The notebook reads `data/raw/marketing_campaign.csv` with a relative path, so run it from the repository root.
+
+## Team
+
+| Member | GitHub | Main contributions |
+|---|---|---|
+| Axel Achart | [axel-achart](https://github.com/axel-achart) | Iris and grocery notebook, hand-coded K-Means, research notes (summary) |
+| Hippolyte Geslain | [Hippolyte-Geslain](https://github.com/Hippolyte-Geslain) | Project kick-off, research notes, first K-Means function, integration on `develop` |
+| Kylliann Larcher | [kylliann-larcher](https://github.com/kylliann-larcher) | Research notes (algorithms, diagrams, sources), pure-NumPy metrics module (`travaux/kylliann/`) |
+
+School project at **LaPlateforme_** (Marseille), **Bachelor in AI / Data**, June–July 2026.
+
+## Tech stack
+
+Python 3.10 · pandas · NumPy · scikit-learn · SciPy · Matplotlib · Seaborn · Jupyter · uv
+
+<p align="right"><a href="#en">↑ Back to top</a> · <a href="#fr">🇫🇷 Version française</a></p>
