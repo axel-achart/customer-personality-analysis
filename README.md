@@ -39,6 +39,7 @@ Le projet se déroule en deux temps :
 | Source | `sklearn.datasets.load_iris` | `data/raw/marketing_campaign.csv` (dataset public Kaggle [*Customer Personality Analysis*](https://www.kaggle.com/datasets/imakash3011/customer-personality-analysis)) |
 | Taille brute | 150 fleurs × 4 mesures | 2 240 clients × 29 colonnes |
 | Après nettoyage | 149 (1 doublon retiré) | 2 208 clients |
+| Licence | Fourni avec scikit-learn | Domaine public (Kaggle) |
 
 **Principales variables de l'épicerie** : année de naissance, niveau d'études, statut marital, revenu, enfants et adolescents au foyer, date d'inscription, jours depuis le dernier achat, dépenses par catégorie (vin, fruits, viande, poisson, sucreries, or), nombre d'achats par canal (promotions, web, catalogue, magasin), visites web par mois, réponses aux 6 campagnes marketing (`AcceptedCmp1` à `AcceptedCmp5`, `Response`), réclamations.
 
@@ -221,6 +222,7 @@ The project has two stages:
 | Source | `sklearn.datasets.load_iris` | `data/raw/marketing_campaign.csv` (public Kaggle dataset [*Customer Personality Analysis*](https://www.kaggle.com/datasets/imakash3011/customer-personality-analysis)) |
 | Raw size | 150 flowers × 4 measurements | 2,240 customers × 29 columns |
 | After cleaning | 149 (1 duplicate removed) | 2,208 customers |
+| Licence | Bundled with scikit-learn | Public domain (Kaggle) |
 
 **Main grocery variables**: year of birth, education, marital status, income, children and teenagers at home, sign-up date, days since last purchase, spending per category (wine, fruit, meat, fish, sweets, gold), number of purchases per channel (deals, web, catalogue, store), monthly web visits, responses to the 6 marketing campaigns (`AcceptedCmp1` to `AcceptedCmp5`, `Response`), complaints.
 
